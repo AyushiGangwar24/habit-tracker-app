@@ -1,0 +1,10 @@
+{
+  "name": "Habit Tracker",
+  "short_name": "Habits",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "description": "Smoking, Eating & Exercise tracker with streaks and badges.",
+  "icons": []
+}
