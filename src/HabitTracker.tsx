@@ -125,6 +125,9 @@ export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
   const [showAwards, setShowAwards] = useState(false);
 
+  // new ref for the scrollable date strip
+  const stripRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => saveStore(store), [store]);
 
   const day = useMemo<DayRecord>(() => {
@@ -242,34 +245,69 @@ useEffect(() => {
         </div>
 
         {/* Mini progress bars for last 7 days */}
-       {/* Scrollable date strip (tap to select) */}
-<div className="-mx-6 px-6 mt-6 overflow-x-auto">
-  <div className="flex gap-2 w-max snap-x snap-mandatory">
-    {days.map((d) => {
-      const isSelected = d.key === selectedDate;
-      return (
-        <button
-          key={d.key}
-          id={`date-${d.key}`}
-          onClick={() => setSelectedDate(d.key)}
-          className={`snap-start shrink-0 w-16 rounded-xl border p-1 text-center transition
-            ${isSelected ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-800"}
-          `}
-          aria-pressed={isSelected}
-          aria-label={`Select ${d.key}`}
-        >
-          <div className="text-[10px] font-medium">{d.label}</div>
-          <div className={`h-2 rounded-full mt-1 overflow-hidden ${isSelected ? "bg-white/30" : "bg-neutral-200"}`}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }}
-            />
-          </div>
-        </button>
-      );
-    })}
+      
+{/* Scrollable date strip with left/right nudge buttons */}
+{/* Scrollable date strip with left/right nudge buttons */}
+<div className="mt-6">
+  <div className="flex items-center gap-2">
+    {/* Left nudge */}
+    <button
+      onClick={() => stripRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
+      className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
+      aria-label="Scroll dates left"
+    >
+      ←
+    </button>
+
+    {/* Scroll container (has the ref) */}
+    <div
+      ref={stripRef}
+      className="-mx-2 px-2 flex-1 overflow-x-auto"
+      style={{ WebkitOverflowScrolling: "touch" }} /* iOS momentum */
+    >
+      <div className="flex gap-2 w-max snap-x snap-mandatory">
+        {days.map((d) => {
+          const isSelected = d.key === selectedDate;
+          return (
+            <button
+              key={d.key}
+              id={`date-${d.key}`}
+              onClick={() => setSelectedDate(d.key)}
+              className={`snap-start shrink-0 w-16 rounded-xl border p-1 text-center transition ${
+                isSelected ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-800"
+              }`}
+              aria-pressed={isSelected}
+              aria-label={`Select ${d.key}`}
+            >
+              <div className="text-[10px] font-medium">{d.label}</div>
+              <div
+                className={`h-2 rounded-full mt-1 overflow-hidden ${
+                  isSelected ? "bg-white/30" : "bg-neutral-200"
+                }`}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }}
+                />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* Right nudge */}
+    <button
+      onClick={() => stripRef.current?.scrollBy({ left: 240, behavior: "smooth" })}
+      className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
+      aria-label="Scroll dates right"
+    >
+      →
+    </button>
   </div>
 </div>
+
+
       </header>
 
       <main className="max-w-5xl mx-auto px-6 pb-24">
