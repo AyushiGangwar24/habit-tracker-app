@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // ---- No-animations stubs so we don't need framer-motion installed ----
 const motion = { div: (props: any) => <div {...props} /> };
@@ -193,19 +193,28 @@ export default function HabitTracker() {
     [overallStreak]
   );
 
-  const last7 = useMemo(() => {
-    const arr: { date: string; pct: number }[] = [];
-    const base = new Date(selectedDate);
-    for (let i = 6; i >= 0; i--) {
-      const d = prevDate(base, i);
-      const key = keyFor(d);
-      const { total } = getCountsForDate(key);
-      const totalPossible = HABITS.reduce((acc, h) => acc + h.items.length, 0);
-      const pct = totalPossible ? Math.round((total / totalPossible) * 100) : 0;
-      arr.push({ date: key.slice(5), pct }); // MM-DD
-    }
-    return arr;
-  }, [store, selectedDate]);
+ // Scrollable date strip (last N days up to selected date)
+const days = useMemo(() => {
+  const COUNT = 60; // show the last 60 days (change to 30/90/etc. if you want)
+  const arr: { key: string; label: string; pct: number }[] = [];
+  const base = new Date(selectedDate);
+  for (let i = COUNT - 1; i >= 0; i--) {
+    const d = prevDate(base, i);
+    const key = keyFor(d);
+    const { total } = getCountsForDate(key);
+    const totalPossible = HABITS.reduce((acc, h) => acc + h.items.length, 0);
+    const pct = totalPossible ? Math.round((total / totalPossible) * 100) : 0;
+    arr.push({ key, label: key.slice(5), pct }); // label like MM-DD
+  }
+  return arr;
+}, [store, selectedDate]);
+
+// When the selectedDate changes, auto-scroll that date into view
+useEffect(() => {
+  const el = document.getElementById(`date-${selectedDate}`);
+  el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+}, [selectedDate]);
+
 
   return (
     <div className="min-h-screen w-full bg-neutral-50 text-neutral-900">
@@ -233,16 +242,34 @@ export default function HabitTracker() {
         </div>
 
         {/* Mini progress bars for last 7 days */}
-        <div className="mt-6 grid grid-cols-7 gap-2">
-          {last7.map((d, idx) => (
-            <div key={idx} className="space-y-1">
-              <div className="text-[10px] text-neutral-500 text-center">{d.date}</div>
-              <div className="h-2 w-full rounded-full bg-neutral-200 overflow-hidden">
-                <div className="h-full rounded-full" style={{ background: "#111", width: `${d.pct}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
+       {/* Scrollable date strip (tap to select) */}
+<div className="-mx-6 px-6 mt-6 overflow-x-auto">
+  <div className="flex gap-2 w-max snap-x snap-mandatory">
+    {days.map((d) => {
+      const isSelected = d.key === selectedDate;
+      return (
+        <button
+          key={d.key}
+          id={`date-${d.key}`}
+          onClick={() => setSelectedDate(d.key)}
+          className={`snap-start shrink-0 w-16 rounded-xl border p-1 text-center transition
+            ${isSelected ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-800"}
+          `}
+          aria-pressed={isSelected}
+          aria-label={`Select ${d.key}`}
+        >
+          <div className="text-[10px] font-medium">{d.label}</div>
+          <div className={`h-2 rounded-full mt-1 overflow-hidden ${isSelected ? "bg-white/30" : "bg-neutral-200"}`}>
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }}
+            />
+          </div>
+        </button>
+      );
+    })}
+  </div>
+</div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 pb-24">
