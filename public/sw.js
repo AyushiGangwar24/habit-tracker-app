@@ -1,4 +1,4 @@
-const CACHE = 'habit-tracker-v4';
+const CACHE = 'habit-tracker-v8';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
