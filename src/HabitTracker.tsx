@@ -123,6 +123,38 @@ export default function HabitTracker() {
       }
     );
   }, [store, selectedDate]);
+function exportCSV(byDate: Record<string, { date: string; checks: Record<string, boolean> }>) {
+  // CSV header
+  const headers = ["date","habitId","itemId","checked"];
+  const rows: string[] = [headers.join(",")];
+
+  // Emit checked items
+  Object.values(byDate).forEach(day => {
+    Object.entries(day.checks).forEach(([key, checked]) => {
+      const [habitId, itemId] = key.split(".");
+      rows.push([day.date, habitId, itemId, checked ? "1" : "0"].join(","));
+    });
+    // Emit unchecked items too, so every habit/item exists for each day
+    HABITS.forEach(h =>
+      h.items.forEach(it => {
+        const k = `${h.id}.${it.id}`;
+        if (!(k in day.checks)) {
+          rows.push([day.date, h.id, it.id, "0"].join(","));
+        }
+      })
+    );
+  });
+
+  const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "habit-tracker.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
   const toggleCheck = (habitId: string, itemId: string) => {
     const key = `${habitId}.${itemId}`;
@@ -494,6 +526,13 @@ export default function HabitTracker() {
                 }}
                 className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
               >
+                <button
+                onClick={() => exportCSV(store.byDate)}
+                  className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
+              >
+              Export CSV
+                </button>
+
                 Reset All
               </button>
             </div>
