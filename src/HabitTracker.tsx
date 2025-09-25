@@ -501,44 +501,34 @@ function exportCSV(byDate: Record<string, { date: string; checks: Record<string,
               your streak.
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  // Clear only the selected date
-                  setStore((prev) => {
-                    const next = { ...prev.byDate };
-                    delete next[selectedDate];
-                    return { byDate: next };
-                  });
-                }}
-                className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              >
-                Clear {selectedDate}
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    !confirm(
-                      'This will erase all habit data on this device. Continue?'
-                    )
-                  )
-                    return;
-                  setStore({ byDate: {} });
-                }}
-                className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              >
-                <button
-                onClick={() => exportCSV(store.byDate)}
-                  className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              >
-              Export CSV
-                </button>
+  <button
+    onClick={() => {
+      // Clear only the selected date
+      setStore((prev) => {
+        const next = { ...prev.byDate };
+        delete next[selectedDate];
+        return { byDate: next };
+      });
+    }}
+    className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
+  >
+    Clear {selectedDate}
+  </button>
 
-                Reset All
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
+  <button
+    onClick={() => exportCSV(store.byDate)}
+    className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
+  >
+    Export CSV
+  </button>
+
+  <button
+    onClick={() => {
+      if (!confirm('This will erase all habit data on this device. Continue?')) return;
+      setStore({ byDate: {} });
+    }}
+    className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
+  >
+    Reset All
+  </button>
+</div>
