@@ -1,5 +1,5 @@
 // Bump this whenever you ship (change v8 to v9, etc.)
-const CACHE = "habit-tracker-v25";
+const CACHE = "habit-tracker-v26";
 const ASSETS = ["/", "/index.html", "/manifest.json"];
 
 // Install: pre-cache and activate immediately
