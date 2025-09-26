@@ -1,15 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-/** Stub motion so we don't need framer-motion installed */
+// ---- No-animations stubs so we don't need framer-motion installed ----
 const motion = { div: (props: any) => <div {...props} /> };
 const AnimatePresence: React.FC<{ children?: React.ReactNode }> = ({ children }) => <>{children}</>;
 
 /**
  * Habit Tracker — Single-file React component
- * - Smoking, Eating, Exercise categories
- * - Daily progress with goals, streaks, badges
- * - localStorage persistence
- * - Export CSV button
  */
 
 // ---------------------- Config ----------------------
@@ -97,7 +93,6 @@ function exportCSV(byDate: Record<string, { date: string; checks: Record<string,
       const [habitId, itemId] = key.split(".");
       rows.push([day.date, habitId, itemId, checked ? "1" : "0"].join(","));
     });
-    // include unchecked items so every habit/item appears daily
     HABITS.forEach(h =>
       h.items.forEach(it => {
         const k = `${h.id}.${it.id}`;
@@ -125,7 +120,6 @@ export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
   const [showAwards, setShowAwards] = useState(false);
 
-  // ref for the scrollable date strip (container)
   const stripRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => saveStore(store), [store]);
@@ -196,39 +190,22 @@ export default function HabitTracker() {
     [overallStreak]
   );
 
-  /**
-   * Scrollable date strip window
-   * - Always ends at today by default (so newer dates are visible)
-   * - If selected date is *earlier* than default window, we extend the window back
-   *   so the selected date is still inside the list (but we never move “today” earlier).
-   */
+  // Scrollable date strip
   const days = useMemo(() => {
-    const COUNT = 60; // number of days shown in the strip
-    const today = new Date(); // anchor window to today
-    let endForList = today;
-
-    // default window start (today - COUNT + 1)
-    const defaultStart = prevDate(today, COUNT - 1);
-
-    const selected = new Date(selectedDate);
-    // if selected is *earlier* than default window, shift the window back
-    if (selected < defaultStart) {
-      endForList = selected;
-    }
-
+    const COUNT = 60;
     const arr: { key: string; label: string; pct: number }[] = [];
+    const base = new Date(selectedDate);
     for (let i = COUNT - 1; i >= 0; i--) {
-      const d = prevDate(endForList, i);
+      const d = prevDate(base, i);
       const key = keyFor(d);
       const { total } = getCountsForDate(key);
       const totalPossible = HABITS.reduce((acc, h) => acc + h.items.length, 0);
       const pct = totalPossible ? Math.round((total / totalPossible) * 100) : 0;
-      arr.push({ key, label: key.slice(5), pct }); // label like MM-DD
+      arr.push({ key, label: key.slice(5), pct });
     }
     return arr;
   }, [store, selectedDate]);
 
-  // Auto-center the selected date when it changes (but don't snap-lock)
   useEffect(() => {
     const el = document.getElementById(`date-${selectedDate}`);
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -236,268 +213,52 @@ export default function HabitTracker() {
 
   return (
     <div className="min-h-screen w-full bg-neutral-50 text-neutral-900 overflow-x-hidden">
-      <header className="max-w-5xl mx-auto px-6 pt-10 pb-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Habit Tracker</h1>
-            <p className="text-sm text-neutral-600">
-              Smoking, Eating &amp; Exercise — daily check-ins, streaks, and badges.
-            </p>
-          </div>
-          {/* Keep a lightweight Today button only (no big input; cleaner mobile UI) */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSelectedDate(todayKey())}
-              className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              title="Jump to today"
-            >
-              Today
-            </button>
-          </div>
-        </div>
+      <header className="max-w-5xl mx-auto px-4 pt-10 pb-4">
+        <h1 className="text-3xl font-bold">Habit Tracker</h1>
+        <p className="text-sm text-neutral-600">Smoking, Eating & Exercise — daily check-ins, streaks, and badges.</p>
 
-        {/* Scrollable date strip with left/right nudge buttons */}
-        <div className="mt-6">
-          <div className="flex items-center gap-2">
-            {/* Left nudge */}
-            <button
-              onClick={() => stripRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
-              className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              aria-label="Scroll dates left"
-            >
-              ←
-            </button>
-
-            {/* Scroll container (has the ref) */}
-            <div
-              ref={stripRef}
-              className="flex-1 overflow-x-auto"
-              style={{ WebkitOverflowScrolling: "touch" }} /* iOS momentum */
-            >
-              <div className="flex gap-2 w-max">
-                {days.map((d) => {
-                  const isSelected = d.key === selectedDate;
-                  return (
-                    <button
-                      key={d.key}
-                      id={`date-${d.key}`}
-                      onClick={() => setSelectedDate(d.key)}
-                      className={`shrink-0 w-16 rounded-xl border p-1 text-center transition ${
-                        isSelected
-                          ? "bg-neutral-900 text-white border-neutral-900"
-                          : "bg-white text-neutral-800"
-                      }`}
-                      aria-pressed={isSelected}
-                      aria-label={`Select ${d.key}`}
-                    >
-                      <div className="text-[10px] font-medium">{d.label}</div>
-                      <div
-                        className={`h-2 rounded-full mt-1 overflow-hidden ${
-                          isSelected ? "bg-white/30" : "bg-neutral-200"
-                        }`}
-                      >
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+        {/* Scrollable date strip */}
+        <div className="mt-6 flex items-center gap-2">
+          <button
+            onClick={() => stripRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
+            className="rounded-xl border px-2 py-1 text-sm shadow-sm hover:bg-neutral-100"
+          >
+            ←
+          </button>
+          <div
+            ref={stripRef}
+            className="flex-1 overflow-x-auto no-scrollbar"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            <div className="flex gap-2 w-max">
+              {days.map((d) => {
+                const isSelected = d.key === selectedDate;
+                return (
+                  <button
+                    key={d.key}
+                    id={`date-${d.key}`}
+                    onClick={() => setSelectedDate(d.key)}
+                    className={`shrink-0 w-16 rounded-xl border p-1 text-center transition
+                      ${isSelected ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-800"}
+                    `}
+                  >
+                    <div className="text-[10px] font-medium">{d.label}</div>
+                    <div className="h-2 mt-1 rounded-full bg-neutral-200 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }} />
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-
-            {/* Right nudge */}
-            <button
-              onClick={() => stripRef.current?.scrollBy({ left: 240, behavior: "smooth" })}
-              className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              aria-label="Scroll dates right"
-            >
-              →
-            </button>
           </div>
+          <button
+            onClick={() => stripRef.current?.scrollBy({ left: 240, behavior: "smooth" })}
+            className="rounded-xl border px-2 py-1 text-sm shadow-sm hover:bg-neutral-100"
+          >
+            →
+          </button>
         </div>
       </header>
-
-      <main className="max-w-5xl mx-auto px-6 pb-24">
-        {/* Overview cards */}
-        <div className="grid md:grid-cols-3 gap-4">
-          {HABITS.map((h) => {
-            const p = progressForHabit(h.id);
-            return (
-              <motion.div key={h.id} className="rounded-2xl bg-white p-5 shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl" aria-hidden>{h.icon}</span>
-                    <h2 className="text-lg font-semibold">{h.label}</h2>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      p.goalMet ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {p.goalMet ? "Goal met" : `Goal: ${h.dailyGoal}/${h.items.length}`}
-                  </span>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {h.items.map((it) => {
-                    const key = `${h.id}.${it.id}`;
-                    const checked = !!day.checks[key];
-                    return (
-                      <label key={it.id} className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4"
-                          checked={checked}
-                          onChange={() => toggleCheck(h.id, it.id)}
-                        />
-                        <span className={`text-sm ${checked ? "line-through text-neutral-500" : ""}`}>
-                          {it.label}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-5">
-                  <div className="flex justify-between text-xs text-neutral-600 mb-1">
-                    <span>{p.done}/{p.total} completed</span>
-                    <span>{p.pct}%</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-neutral-200 overflow-hidden">
-                    <motion.div className="h-full rounded-full" style={{ background: "#111", width: `${p.pct}%` }} />
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Points & Streaks */}
-        <div className="mt-6 grid md:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-white p-5 shadow-sm border">
-            <h3 className="font-semibold">Points</h3>
-            <p className="text-sm text-neutral-600">{POINTS_PER_ITEM} pts per completed item</p>
-            <div className="mt-3 text-3xl font-bold">{totalPointsToday}</div>
-            <div className="text-xs text-neutral-500">for {selectedDate}</div>
-          </div>
-
-          <div className="rounded-2xl bg-white p-5 shadow-sm border">
-            <h3 className="font-semibold">Overall Streak</h3>
-            <p className="text-sm text-neutral-600">Consecutive days meeting all goals</p>
-            <div className="mt-3 text-3xl font-bold">
-              {overallStreak} day{overallStreak === 1 ? "" : "s"}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {BADGES.map((b) => (
-                <span
-                  key={b.id}
-                  className={`text-xs px-2 py-1 rounded-full border ${
-                    earnedBadges.includes(b.id)
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-800"
-                      : "bg-neutral-50 border-neutral-200 text-neutral-400"
-                  }`}
-                >
-                  <span className="mr-1" aria-hidden>{b.emoji}</span>{b.label}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white p-5 shadow-sm border">
-            <h3 className="font-semibold">Awards</h3>
-            <p className="text-sm text-neutral-600">Earn fun badges as your streak grows</p>
-            <button
-              onClick={() => setShowAwards(true)}
-              className="mt-3 w-full rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-            >
-              View my awards
-            </button>
-          </div>
-        </div>
-      </main>
-
-      {/* Awards Modal */}
-      <AnimatePresence>
-        {showAwards && (
-          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowAwards(false)} />
-            <motion.div className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h4 className="text-xl font-semibold">Your Awards</h4>
-                  <p className="text-sm text-neutral-600">Unlocked badges based on your current streak.</p>
-                </div>
-                <button onClick={() => setShowAwards(false)} className="rounded-xl border px-3 py-1 text-sm shadow-sm hover:bg-neutral-100">
-                  Close
-                </button>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                {BADGES.map((b) => {
-                  const unlocked = earnedBadges.includes(b.id);
-                  return (
-                    <div key={b.id} className={`rounded-xl border p-4 ${unlocked ? "bg-indigo-50 border-indigo-200" : "bg-neutral-50 border-neutral-200"}`}>
-                      <div className="text-3xl" aria-hidden>{b.emoji}</div>
-                      <div className="mt-2 font-medium">{b.label}</div>
-                      <div className="text-xs text-neutral-500">{unlocked ? "Unlocked" : `Reach ${b.threshold}-day streak`}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-5 rounded-xl bg-neutral-50 p-4 text-sm text-neutral-700">
-                <p className="font-medium mb-1">How streaks work</p>
-                <p>On a given day, you must meet the goal for all three categories (Smoking, Eating, Exercise) to keep your streak alive. Each category has its own daily goal shown on the card.</p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <footer className="fixed bottom-4 left-0 right-0">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="rounded-2xl bg-white/90 backdrop-blur p-3 border shadow-sm flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-neutral-700">
-              Tip: Use the date strip to back-fill previous days and build your streak.
-            </div>
-            {/* Three separate buttons (no nesting) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setStore(prev => {
-                    const next = { ...prev.byDate };
-                    delete next[selectedDate];
-                    return { byDate: next };
-                  });
-                }}
-                className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              >
-                Clear {selectedDate}
-              </button>
-
-              <button
-                onClick={() => exportCSV(store.byDate)}
-                className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              >
-                Export CSV
-              </button>
-
-              <button
-                onClick={() => {
-                  if (!confirm("This will erase all habit data on this device. Continue?")) return;
-                  setStore({ byDate: {} });
-                }}
-                className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
-              >
-                Reset All
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
