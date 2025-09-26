@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-// ---- No-animations stubs so we don't need framer-motion installed ----
+/** Stub motion so we don't need framer-motion installed */
 const motion = { div: (props: any) => <div {...props} /> };
 const AnimatePresence: React.FC<{ children?: React.ReactNode }> = ({ children }) => <>{children}</>;
 
@@ -97,7 +97,7 @@ function exportCSV(byDate: Record<string, { date: string; checks: Record<string,
       const [habitId, itemId] = key.split(".");
       rows.push([day.date, habitId, itemId, checked ? "1" : "0"].join(","));
     });
-    // also include unchecked items, so every habit/item appears daily
+    // include unchecked items so every habit/item appears daily
     HABITS.forEach(h =>
       h.items.forEach(it => {
         const k = `${h.id}.${it.id}`;
@@ -125,7 +125,7 @@ export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
   const [showAwards, setShowAwards] = useState(false);
 
-  // new ref for the scrollable date strip
+  // ref for the scrollable date strip (container)
   const stripRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => saveStore(store), [store]);
@@ -196,44 +196,56 @@ export default function HabitTracker() {
     [overallStreak]
   );
 
- // Scrollable date strip (last N days up to selected date)
-const days = useMemo(() => {
-  const COUNT = 60; // show the last 60 days (change to 30/90/etc. if you want)
-  const arr: { key: string; label: string; pct: number }[] = [];
-  const base = new Date(selectedDate);
-  for (let i = COUNT - 1; i >= 0; i--) {
-    const d = prevDate(base, i);
-    const key = keyFor(d);
-    const { total } = getCountsForDate(key);
-    const totalPossible = HABITS.reduce((acc, h) => acc + h.items.length, 0);
-    const pct = totalPossible ? Math.round((total / totalPossible) * 100) : 0;
-    arr.push({ key, label: key.slice(5), pct }); // label like MM-DD
-  }
-  return arr;
-}, [store, selectedDate]);
+  /**
+   * Scrollable date strip window
+   * - Always ends at today by default (so newer dates are visible)
+   * - If selected date is *earlier* than default window, we extend the window back
+   *   so the selected date is still inside the list (but we never move “today” earlier).
+   */
+  const days = useMemo(() => {
+    const COUNT = 60; // number of days shown in the strip
+    const today = new Date(); // anchor window to today
+    let endForList = today;
 
-// When the selectedDate changes, auto-scroll that date into view
-useEffect(() => {
-  const el = document.getElementById(`date-${selectedDate}`);
-  el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-}, [selectedDate]);
+    // default window start (today - COUNT + 1)
+    const defaultStart = prevDate(today, COUNT - 1);
 
+    const selected = new Date(selectedDate);
+    // if selected is *earlier* than default window, shift the window back
+    if (selected < defaultStart) {
+      endForList = selected;
+    }
+
+    const arr: { key: string; label: string; pct: number }[] = [];
+    for (let i = COUNT - 1; i >= 0; i--) {
+      const d = prevDate(endForList, i);
+      const key = keyFor(d);
+      const { total } = getCountsForDate(key);
+      const totalPossible = HABITS.reduce((acc, h) => acc + h.items.length, 0);
+      const pct = totalPossible ? Math.round((total / totalPossible) * 100) : 0;
+      arr.push({ key, label: key.slice(5), pct }); // label like MM-DD
+    }
+    return arr;
+  }, [store, selectedDate]);
+
+  // Auto-center the selected date when it changes (but don't snap-lock)
+  useEffect(() => {
+    const el = document.getElementById(`date-${selectedDate}`);
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [selectedDate]);
 
   return (
-    <div className="min-h-screen w-full bg-neutral-50 text-neutral-900">
+    <div className="min-h-screen w-full bg-neutral-50 text-neutral-900 overflow-x-hidden">
       <header className="max-w-5xl mx-auto px-6 pt-10 pb-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Habit Tracker</h1>
-            <p className="text-sm text-neutral-600">Smoking, Eating & Exercise — daily check-ins, streaks, and badges.</p>
+            <p className="text-sm text-neutral-600">
+              Smoking, Eating &amp; Exercise — daily check-ins, streaks, and badges.
+            </p>
           </div>
+          {/* Keep a lightweight Today button only (no big input; cleaner mobile UI) */}
           <div className="flex items-center gap-2">
-            <input
-              type="date"
-              className="rounded-xl border px-3 py-2 text-sm shadow-sm"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
             <button
               onClick={() => setSelectedDate(todayKey())}
               className="rounded-xl border px-3 py-2 text-sm shadow-sm hover:bg-neutral-100"
@@ -244,70 +256,67 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Mini progress bars for last 7 days */}
-      
-{/* Scrollable date strip with left/right nudge buttons */}
-{/* Scrollable date strip with left/right nudge buttons */}
-<div className="mt-6">
-  <div className="flex items-center gap-2">
-    {/* Left nudge */}
-    <button
-      onClick={() => stripRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
-      className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
-      aria-label="Scroll dates left"
-    >
-      ←
-    </button>
-
-    {/* Scroll container (has the ref) */}
-    <div
-      ref={stripRef}
-      className="-mx-2 px-2 flex-1 overflow-x-auto"
-      style={{ WebkitOverflowScrolling: "touch" }} /* iOS momentum */
-    >
-      <div className="flex gap-2 w-max snap-x snap-mandatory">
-        {days.map((d) => {
-          const isSelected = d.key === selectedDate;
-          return (
+        {/* Scrollable date strip with left/right nudge buttons */}
+        <div className="mt-6">
+          <div className="flex items-center gap-2">
+            {/* Left nudge */}
             <button
-              key={d.key}
-              id={`date-${d.key}`}
-              onClick={() => setSelectedDate(d.key)}
-              className={`snap-start shrink-0 w-16 rounded-xl border p-1 text-center transition ${
-                isSelected ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-800"
-              }`}
-              aria-pressed={isSelected}
-              aria-label={`Select ${d.key}`}
+              onClick={() => stripRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
+              className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
+              aria-label="Scroll dates left"
             >
-              <div className="text-[10px] font-medium">{d.label}</div>
-              <div
-                className={`h-2 rounded-full mt-1 overflow-hidden ${
-                  isSelected ? "bg-white/30" : "bg-neutral-200"
-                }`}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }}
-                />
-              </div>
+              ←
             </button>
-          );
-        })}
-      </div>
-    </div>
 
-    {/* Right nudge */}
-    <button
-      onClick={() => stripRef.current?.scrollBy({ left: 240, behavior: "smooth" })}
-      className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
-      aria-label="Scroll dates right"
-    >
-      →
-    </button>
-  </div>
-</div>
+            {/* Scroll container (has the ref) */}
+            <div
+              ref={stripRef}
+              className="flex-1 overflow-x-auto"
+              style={{ WebkitOverflowScrolling: "touch" }} /* iOS momentum */
+            >
+              <div className="flex gap-2 w-max">
+                {days.map((d) => {
+                  const isSelected = d.key === selectedDate;
+                  return (
+                    <button
+                      key={d.key}
+                      id={`date-${d.key}`}
+                      onClick={() => setSelectedDate(d.key)}
+                      className={`shrink-0 w-16 rounded-xl border p-1 text-center transition ${
+                        isSelected
+                          ? "bg-neutral-900 text-white border-neutral-900"
+                          : "bg-white text-neutral-800"
+                      }`}
+                      aria-pressed={isSelected}
+                      aria-label={`Select ${d.key}`}
+                    >
+                      <div className="text-[10px] font-medium">{d.label}</div>
+                      <div
+                        className={`h-2 rounded-full mt-1 overflow-hidden ${
+                          isSelected ? "bg-white/30" : "bg-neutral-200"
+                        }`}
+                      >
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${d.pct}%`, background: isSelected ? "white" : "#111" }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-
+            {/* Right nudge */}
+            <button
+              onClick={() => stripRef.current?.scrollBy({ left: 240, behavior: "smooth" })}
+              className="rounded-xl border px-2 py-2 text-sm shadow-sm hover:bg-neutral-100"
+              aria-label="Scroll dates right"
+            >
+              →
+            </button>
+          </div>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 pb-24">
@@ -322,7 +331,11 @@ useEffect(() => {
                     <span className="text-2xl" aria-hidden>{h.icon}</span>
                     <h2 className="text-lg font-semibold">{h.label}</h2>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${p.goalMet ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      p.goalMet ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
                     {p.goalMet ? "Goal met" : `Goal: ${h.dailyGoal}/${h.items.length}`}
                   </span>
                 </div>
@@ -339,7 +352,9 @@ useEffect(() => {
                           checked={checked}
                           onChange={() => toggleCheck(h.id, it.id)}
                         />
-                        <span className={`text-sm ${checked ? "line-through text-neutral-500" : ""}`}>{it.label}</span>
+                        <span className={`text-sm ${checked ? "line-through text-neutral-500" : ""}`}>
+                          {it.label}
+                        </span>
                       </label>
                     );
                   })}
@@ -372,13 +387,17 @@ useEffect(() => {
           <div className="rounded-2xl bg-white p-5 shadow-sm border">
             <h3 className="font-semibold">Overall Streak</h3>
             <p className="text-sm text-neutral-600">Consecutive days meeting all goals</p>
-            <div className="mt-3 text-3xl font-bold">{overallStreak} day{overallStreak === 1 ? "" : "s"}</div>
+            <div className="mt-3 text-3xl font-bold">
+              {overallStreak} day{overallStreak === 1 ? "" : "s"}
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {BADGES.map((b) => (
                 <span
                   key={b.id}
                   className={`text-xs px-2 py-1 rounded-full border ${
-                    earnedBadges.includes(b.id) ? "bg-indigo-50 border-indigo-200 text-indigo-800" : "bg-neutral-50 border-neutral-200 text-neutral-400"
+                    earnedBadges.includes(b.id)
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-800"
+                      : "bg-neutral-50 border-neutral-200 text-neutral-400"
                   }`}
                 >
                   <span className="mr-1" aria-hidden>{b.emoji}</span>{b.label}
@@ -442,7 +461,7 @@ useEffect(() => {
         <div className="max-w-5xl mx-auto px-6">
           <div className="rounded-2xl bg-white/90 backdrop-blur p-3 border shadow-sm flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-neutral-700">
-              Tip: Click the date picker to back-fill previous days and build your streak.
+              Tip: Use the date strip to back-fill previous days and build your streak.
             </div>
             {/* Three separate buttons (no nesting) */}
             <div className="flex items-center gap-2">
